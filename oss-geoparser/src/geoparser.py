@@ -21,6 +21,7 @@ sys.path.append(os.path.dirname(__file__))
 from parsers.xml_parser import SaskatchewanXMLParser, LocationMention
 from parsers.toponym_xml_parser import ToponymXMLParser
 from utils.toponym_filter import ToponymFilter
+from utils.zero_match_analytics import ZeroMatchTracker
 from clustering.context_clusterer import ContextClusterer
 from disambiguation.multi_context_rag import MultiContextDisambiguator, DisambiguationResult
 from knowledge_graph.neo4j_interface import Neo4jKnowledgeGraph
@@ -36,6 +37,7 @@ class GeoparseResult:
     multi_referent_detected: int
     results: List[Dict]  # Serialized DisambiguationResults
     filter_statistics: Optional[Dict] = None
+    zero_match_statistics: Optional[Dict] = None  # Analytics for human review
 
 
 class OSSGeoparser:
@@ -92,8 +94,19 @@ class OSSGeoparser:
 
         self.filter_enabled = enable_filtering
         if enable_filtering:
-            self.filter = ToponymFilter(strict_mode=filter_strict_mode)
+            # Load custom ambiguous terms from config file
+            ambiguous_terms_path = os.path.join(
+                os.path.dirname(os.path.dirname(__file__)),
+                'config',
+                'ambiguous_terms.txt'
+            )
+            self.filter = ToponymFilter(
+                strict_mode=filter_strict_mode,
+                ambiguous_terms_file=ambiguous_terms_path
+            )
             self.logger.info("Toponym filtering: ENABLED")
+            if os.path.exists(ambiguous_terms_path):
+                self.logger.info(f"  Loaded custom ambiguous terms from: {ambiguous_terms_path}")
         else:
             self.filter = None
             self.logger.info("Toponym filtering: DISABLED")
@@ -117,6 +130,11 @@ class OSSGeoparser:
             max_contexts_per_cluster=max_contexts_per_cluster,
             max_candidates=max_candidates
         )
+
+        # Initialize zero-match tracker for analytics
+        self.zero_match_tracker = ZeroMatchTracker()
+        # Wire tracker into disambiguator
+        self.disambiguator.zero_match_tracker = self.zero_match_tracker
 
         self.logger.info("OSS-Geoparser initialized successfully")
 
@@ -215,7 +233,10 @@ class OSSGeoparser:
                     'error': True
                 })
 
-        # Step 4: Return complete results
+        # Step 4: Collect zero-match statistics for human review
+        zero_match_stats = self.zero_match_tracker.get_statistics()
+
+        # Step 5: Return complete results
         return GeoparseResult(
             document_id=os.path.basename(xml_path),
             total_mentions=len(mentions) + filtered_count,
@@ -223,7 +244,8 @@ class OSSGeoparser:
             processed_mentions=len(mentions),
             multi_referent_detected=multi_referent_count,
             results=results,
-            filter_statistics=filter_stats
+            filter_statistics=filter_stats,
+            zero_match_statistics=zero_match_stats
         )
 
     def geoparse_batch(

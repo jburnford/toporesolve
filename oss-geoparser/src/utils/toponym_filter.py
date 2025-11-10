@@ -24,6 +24,7 @@ class FilterReason(Enum):
     NUMERIC_ONLY = "numeric_only"
     LIKELY_PERSON_NAME = "likely_person_name"
     BLACKLISTED = "blacklisted"
+    AMBIGUOUS_TERM = "ambiguous_term"  # Terms too ambiguous to ground reliably
 
 
 class ToponymFilter:
@@ -36,10 +37,11 @@ class ToponymFilter:
     3. Are likely NER errors
     """
 
-    def __init__(self, strict_mode: bool = False):
+    def __init__(self, strict_mode: bool = False, ambiguous_terms_file: Optional[str] = None):
         """
         Args:
             strict_mode: If True, apply stricter filtering (fewer false positives)
+            ambiguous_terms_file: Optional path to file with ambiguous terms (one per line)
         """
         self.strict_mode = strict_mode
 
@@ -88,6 +90,41 @@ class ToponymFilter:
             'mr.', 'mrs.', 'ms.', 'miss', 'dr.', 'prof.', 'sir', 'lady', 'lord',
             'capt.', 'captain', 'lt.', 'col.', 'gen.', 'rev.', 'father', 'brother'
         }
+
+        # Ambiguous terms - too generic to reliably ground
+        # These are common words that appear as toponyms but have many candidates
+        # Start with obvious examples; can be expanded based on data analysis
+        self.ambiguous_terms = {
+            # Generic geographic features (without "the")
+            'fort', 'river', 'lake', 'mountain', 'hill', 'creek', 'island',
+            'bay', 'valley', 'falls', 'rapids', 'portage', 'pass', 'bridge',
+
+            # Generic settlement types
+            'city', 'town', 'village', 'settlement', 'post', 'station', 'camp',
+
+            # Directional/regional terms
+            'north', 'south', 'east', 'west', 'central', 'upper', 'lower',
+            'new', 'old', 'great', 'little', 'big', 'small',
+
+            # Common ambiguous words
+            'union', 'junction', 'center', 'centre', 'cross', 'corner',
+            'point', 'head', 'mouth', 'landing', 'springs', 'wells'
+        }
+
+        # Load custom ambiguous terms from file if provided
+        if ambiguous_terms_file:
+            self._load_ambiguous_terms(ambiguous_terms_file)
+
+    def _load_ambiguous_terms(self, filepath: str):
+        """Load additional ambiguous terms from file (one per line)"""
+        try:
+            with open(filepath, 'r') as f:
+                for line in f:
+                    term = line.strip().lower()
+                    if term and not term.startswith('#'):  # Skip empty lines and comments
+                        self.ambiguous_terms.add(term)
+        except FileNotFoundError:
+            pass  # File is optional
 
     def is_groundable(self, toponym: str, context: Optional[str] = None) -> Tuple[bool, Optional[FilterReason]]:
         """
@@ -140,6 +177,10 @@ class ToponymFilter:
         # Check for person name indicators
         if context and self._likely_person_name(toponym, context):
             return (False, FilterReason.LIKELY_PERSON_NAME)
+
+        # Check ambiguous terms (too generic to ground reliably)
+        if normalized in self.ambiguous_terms:
+            return (False, FilterReason.AMBIGUOUS_TERM)
 
         # Passed all filters
         return (True, None)

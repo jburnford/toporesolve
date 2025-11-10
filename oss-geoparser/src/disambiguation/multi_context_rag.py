@@ -140,6 +140,11 @@ class MultiContextDisambiguator:
         self.logger.info(f"Retrieved {len(candidates)} candidates from Neo4j")
 
         if not candidates:
+            # Track zero-match for analytics (if tracker enabled)
+            if hasattr(self, 'zero_match_tracker') and self.zero_match_tracker:
+                sample_context = representative_contexts[0].text if representative_contexts else None
+                self.zero_match_tracker.record_zero_match(mention.name, context=sample_context)
+
             return DisambiguationResult(
                 toponym=mention.name,
                 selected_candidate=None,
@@ -229,6 +234,10 @@ class MultiContextDisambiguator:
 
                 response_text = response.choices[0].message.content.strip()
 
+                # Log full LLM response for debugging/analysis
+                self.logger.info(f"LLM Response for '{toponym}':")
+                self.logger.info(f"  Raw response: {response_text[:500]}..." if len(response_text) > 500 else f"  Raw response: {response_text}")
+
                 # Extract JSON from response
                 if "```json" in response_text:
                     response_text = response_text.split("```json")[1].split("```")[0].strip()
@@ -237,21 +246,27 @@ class MultiContextDisambiguator:
 
                 llm_decision = json.loads(response_text)
 
+                # Log parsed decision
+                self.logger.info(f"  Parsed decision: selected_id={llm_decision.get('selected_id')}, confidence={llm_decision.get('confidence', 'N/A')}")
+
                 # Find selected candidate
                 selected_id = llm_decision.get('selected_id')
                 reasoning = llm_decision.get('reasoning', 'No reasoning provided')
                 llm_confidence = llm_decision.get('confidence', 'medium').lower()
 
                 if selected_id is None:
+                    self.logger.info(f"  Decision: No candidate selected")
                     return (None, reasoning)
 
                 # PRECISION-FIRST: Reject low-confidence selections
                 # Better to return null than risk false positive
                 if llm_confidence == 'low':
-                    self.logger.warning(f"Rejecting low-confidence selection for precision")
+                    self.logger.warning(f"  Decision: Rejecting low-confidence selection for precision")
                     return (None, f"Low confidence: {reasoning}")
 
                 selected = next((c for c in candidates if c.get('id') == selected_id), None)
+                if selected:
+                    self.logger.info(f"  Decision: Selected '{selected.get('title')}' ({selected.get('lat')}, {selected.get('lon')})")
                 return (selected, reasoning)
 
             except json.JSONDecodeError as e:

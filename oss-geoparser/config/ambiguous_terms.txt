@@ -1,0 +1,99 @@
+# Ambiguous Terms Filter
+#
+# Terms listed here are too generic/ambiguous to ground reliably
+# One term per line (case-insensitive)
+# Lines starting with # are comments
+#
+# Add terms discovered from data analysis of filter statistics
+# Use filter_statistics output to find most common ungroundable terms
+#
+# Examples of ambiguous terms already in default list:
+# - fort, river, lake, mountain (generic geographic features)
+# - city, town, village (generic settlement types)
+# - north, south, east, west (directional terms)
+# - union, junction, center (common ambiguous words)
+#
+# Add custom terms below (one per line):
+
+# Demonyms and ethnic groups (from P000045 analysis - 2024-11-09)
+canadians
+chipeways
+
+# Generic descriptive terms
+flat country
+coppices
+
+# Generic facilities without specific names
+french fort
+french trading-post
+
+# Possessive villages (person's village, not groundable without person name)
+chatique's village
+
+# Generic terms from corpus analysis (2024-11-09 - 100 doc sample)
+country
+village
+
+# Generic geographic features (from 5+ frequency analysis - 2025-01-09)
+fort
+camp
+prairie
+prairies
+plains
+river
+forts
+villages
+town
+settlement
+settlements
+ground
+woods
+lakes
+island
+mountains
+islands
+bay
+hill
+encampment
+house
+church
+land
+homes
+houses
+homesteads
+reserves
+reserve
+colony
+colonies
+missions
+
+# Generic administrative/political terms
+west
+north
+south
+interior
+territory
+territories
+province
+provinces
+district
+pays
+townships
+city
+towns
+nations
+nation
+settlement
+provincia
+ouest
+sud
+nord
+english
+canadian
+british territory
+
+# Generic descriptive locations
+pays
+interior
+forks
+portage

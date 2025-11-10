@@ -130,6 +130,28 @@ def main():
             print(f"\n{reason}: {data['count']}")
             print(f"  Examples: {', '.join(data['examples'][:5])}")
 
+    # Zero-match analytics
+    if result.zero_match_statistics:
+        print()
+        print("="*80)
+        print("ZERO-MATCH ANALYTICS (Knowledge Graph Coverage Gaps)")
+        print("="*80)
+        print(f"Unique toponyms with zero matches: {result.zero_match_statistics['total_unique_toponyms']}")
+        print(f"Total zero-match occurrences: {result.zero_match_statistics['total_occurrences']}")
+        print()
+        print("Top 10 most frequent zero-matches (review candidates):")
+        print("-"*80)
+
+        # Sort by frequency
+        items = [(name, data['count']) for name, data in result.zero_match_statistics['toponyms'].items()]
+        items.sort(key=lambda x: x[1], reverse=True)
+
+        for i, (name, count) in enumerate(items[:10], 1):
+            print(f"{i:2}. '{name}' - {count} occurrences")
+
+        print()
+        print(f"→ Full review report will be saved to: results/zero_match_review_P000045.json")
+
     # Save detailed results to JSON
     output_file = "results/precision_first_full_P000045.json"
     os.makedirs("results", exist_ok=True)
@@ -162,11 +184,19 @@ def main():
             "multi_referent_toponyms": multi_ref_count
         },
         "filter_statistics": result.filter_statistics,
+        "zero_match_statistics": result.zero_match_statistics,
         "results": result.results
     }
 
     with open(output_file, 'w') as f:
         json.dump(output_data, f, indent=2)
+
+    # Export zero-match review report for human review
+    if result.zero_match_statistics:
+        review_file = "results/zero_match_review_P000045.json"
+        geoparser.zero_match_tracker.export_for_review(review_file, min_frequency=2)
+        print()
+        print(f"→ Zero-match review report exported to: {review_file}")
 
     print()
     print("="*80)
