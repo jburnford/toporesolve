@@ -3,7 +3,7 @@
     "description": "Corpus-level cache for high-frequency unambiguous toponyms",
     "created": "2024-11-09",
     "source": "Saskatchewan historical documents corpus analysis",
-    "total_cached": 131,
+    "total_cached": 133,
     "usage": "Checked before Neo4j/LLM queries to save API calls"
   },
   "cache": {
@@ -1971,6 +1971,36 @@
       "confidence": "corpus_level",
       "source": "neo4j_corpus_cache",
       "original_toponym": "Province of Ontario"
+    },
+    "lake of the woods": {
+      "geonames_id": 5964700,
+      "wikidata_id": "Q845876",
+      "title": "Lake of the Woods",
+      "country": "CA",
+      "admin1": "08",
+      "lat": 49.5,
+      "lon": -94.5,
+      "feature_class": "H",
+      "feature_code": "LK",
+      "population": 0,
+      "confidence": "corpus_level",
+      "source": "manual_wikidata",
+      "original_toponym": "Lake of the Woods"
+    },
+    "canadian north-west": {
+      "geonames_id": 6091069,
+      "wikidata_id": null,
+      "title": "Northwest Territories",
+      "country": "CA",
+      "admin1": "13",
+      "lat": 69.50061,
+      "lon": -121.50445,
+      "feature_class": "A",
+      "feature_code": "ADM1",
+      "population": 31247,
+      "confidence": "corpus_level",
+      "source": "neo4j_corpus_cache",
+      "original_toponym": "Canadian North-West"
     }
   }
 }
